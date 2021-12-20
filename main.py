@@ -36,9 +36,7 @@ async def datalog_update(request: Request):
 @app.get("/fetchDevice/{deviceID}")
 async def get_data_from_datalog(deviceID: str, decryptKey: str) -> tp.Dict[str, tp.Any]:
     interface = RI.RobonomicsInterface()
-    print(decryptKey)
     mnemonic = decryptKey
-
     kp = Keypair.create_from_mnemonic(mnemonic, ss58_format=32)
     seed = kp.seed_hex
     b = bytes(seed[0:32], "utf8")
@@ -46,7 +44,7 @@ async def get_data_from_datalog(deviceID: str, decryptKey: str) -> tp.Dict[str, 
     pub_key = deviceID
     record = interface.fetch_datalog(pub_key)
     try:
-        decrypted = box.decrypt(base64.b64decode(record["payload"]))
+        decrypted = box.decrypt(base64.b64decode(record["payload"])).decode()
         data = ast.literal_eval(decrypted)
         if deviceID == KEYS["temperature"]:
             response = {
@@ -73,11 +71,13 @@ async def get_data_from_datalog(deviceID: str, decryptKey: str) -> tp.Dict[str, 
                 "imgSrc": "/devicePlaceholder.jpeg",
                 "isManageable": "false",
             }
-        elif deviceID == "4Hd5Zkcu1qubGBi6Lxn59eoZ88osfN53TzxXTVTKUBaEeAuM":
+        elif deviceID == KEYS["vacuum"]:
             response = {
                 "id": deviceID,
                 "name": "Robot Vacuum",
-                "values": [{"name": "State", "value": data["state"], "units": ""}],
+                "values": [
+                    {"name": "State", "value": data["vacuum.robot_vacuum"], "units": ""}
+                ],
                 "recentlyAdded": "false",
                 "imgSrc": "/devicePlaceholder.jpeg",
                 "isManageable": "true",
@@ -93,7 +93,6 @@ async def get_data_from_datalog(deviceID: str, decryptKey: str) -> tp.Dict[str, 
                 "imgSrc": "/devicePlaceholder.jpeg",
                 "isManageable": "true",
             }
-        print(response)
         return response
 
     except Exception as e:
@@ -101,7 +100,9 @@ async def get_data_from_datalog(deviceID: str, decryptKey: str) -> tp.Dict[str, 
 
 
 @app.get("/updateDevice/{deviceID}")
-async def send_to_datalog(deviceID: str, decryptKey: str, value: str) -> tp.Optional[str]:
+async def send_to_datalog(
+    deviceID: str, decryptKey: str, value: str
+) -> tp.Optional[str]:
     interface = RI.RobonomicsInterface()
     mnemonic = decryptKey
     kp = Keypair.create_from_mnemonic(mnemonic, ss58_format=32)
