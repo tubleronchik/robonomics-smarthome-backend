@@ -101,7 +101,7 @@ async def get_data_from_datalog(deviceID: str, decryptKey: str) -> tp.Dict[str, 
 
 
 @app.get("/updateDevice/{deviceID}")
-async def send_to_datalog(deviceID: str, decryptKey: str, key: str, value: str):
+async def send_to_datalog(deviceID: str, decryptKey: str, value: str) -> tp.Optional[str]:
     interface = RI.RobonomicsInterface()
     mnemonic = decryptKey
     kp = Keypair.create_from_mnemonic(mnemonic, ss58_format=32)
