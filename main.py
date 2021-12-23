@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 
 from substrateinterface import SubstrateInterface, Keypair
 import nacl.secret
@@ -14,6 +15,12 @@ import base64
 import robonomicsinterface as RI
 import typing as tp
 import ast
+import json
+
+
+class Response(BaseModel):
+    code: int
+    message: str
 
 
 app = FastAPI()
@@ -33,16 +40,15 @@ async def datalog_update(request: Request):
     return templates.TemplateResponse("main.html", {"request": request})
 
 
-@app.get("/fetchDevice/{deviceID}")
-async def get_data_from_datalog(deviceID: str, decryptKey: str) -> tp.Dict[str, tp.Any]:
+@app.get("/fetchDevice/{deviceID}", response_model=Response)
+async def get_data_from_datalog(deviceID: str, decryptKey: str) -> Response:
     interface = RI.RobonomicsInterface()
     mnemonic = decryptKey
     kp = Keypair.create_from_mnemonic(mnemonic, ss58_format=32)
     seed = kp.seed_hex
     b = bytes(seed[0:32], "utf8")
     box = nacl.secret.SecretBox(b)
-    pub_key = deviceID
-    record = interface.fetch_datalog(pub_key)
+    record = interface.fetch_datalog(deviceID)
     try:
         decrypted = box.decrypt(base64.b64decode(record["payload"])).decode()
         data = ast.literal_eval(decrypted)
@@ -93,28 +99,26 @@ async def get_data_from_datalog(deviceID: str, decryptKey: str) -> tp.Dict[str, 
                 "imgSrc": "/devicePlaceholder.jpeg",
                 "isManageable": "true",
             }
-        return response
+        return Response(code=200, message=json.dumps(response))
 
     except Exception as e:
         print(f"Error during decription {e}")
+        return Response(code=102, message="Could not load data")
 
 
-@app.get("/updateDevice/{deviceID}")
-async def send_to_datalog(
-    deviceID: str, decryptKey: str, value: str
-) -> tp.Optional[str]:
-    interface = RI.RobonomicsInterface()
+@app.get("/updateDevice/{deviceID}", response_model=Response)
+async def send_to_datalog(deviceID: str, decryptKey: str, value: str) -> Response:
+    interface = RI.RobonomicsInterface(seed=decryptKey)
     mnemonic = decryptKey
     kp = Keypair.create_from_mnemonic(mnemonic, ss58_format=32)
     seed = kp.seed_hex
     b = bytes(seed[0:32], "utf8")
     box = nacl.secret.SecretBox(b)
-
     if deviceID == KEYS["vacuum"]:
         if value == "start" or value == "pause":
             data = {"agent": f"robot_vacuum_{value}"}
         elif value == "home":
-            data = {"agent": "robot_vacuum_return_to base"}
+            data = {"agent": "robot_vacuum_return_to_base"}
         else:
             return "Wrong command!"
     elif deviceID == KEYS["lightbulb"]:
@@ -126,7 +130,7 @@ async def send_to_datalog(
                 data = {"agent": "lightbulb_brightness", "brightness": f"{value}"}
             except ValueError:
                 return "Wrong command!"
-
-    encrypted = box.encrypt(bytes(str(data), encoding="utf8"))
+    encrypted = box.encrypt(bytes(json.dumps(data), encoding="utf8"))
     encrypted = base64.b64encode(encrypted).decode("ascii")
     interface.record_datalog(f"{encrypted}")
+    return Response(code=200, message="")
