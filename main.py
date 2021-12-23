@@ -127,7 +127,7 @@ async def send_to_datalog(deviceID: str, decryptKey: str, value: str) -> Respons
         else:
             try:
                 command = int(value)
-                data = {"agent": "lightbulb_brightness", "brightness": f"{value}"}
+                data = {"agent": "lightbulb_brightness", "brightness": f"{command}"}
             except ValueError:
                 return "Wrong command!"
     encrypted = box.encrypt(bytes(json.dumps(data), encoding="utf8"))
