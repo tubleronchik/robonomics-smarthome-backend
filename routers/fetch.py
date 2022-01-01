@@ -2,13 +2,8 @@
 # -*- coding: utf-8 -*-
 
 from config import KEYS
-from fastapi import FastAPI, Form, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse, HTMLResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from fastapi import APIRouter
 from pydantic import BaseModel
-
 from substrateinterface import SubstrateInterface, Keypair
 import nacl.secret
 import base64
@@ -17,34 +12,22 @@ import typing as tp
 import ast
 import json
 
+router = APIRouter()
+
 
 class Response(BaseModel):
     code: int
     message: str
 
 
-app = FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
-
-
-@app.get("/", response_class=HTMLResponse)
-async def datalog_update(request: Request):
-    return templates.TemplateResponse("main.html", {"request": request})
-
-
-@app.get("/fetchDevice/{deviceID}", response_model=Response)
+@router.get("/fetchDevice/{deviceID}", response_model=Response)
 async def get_data_from_datalog(deviceID: str, decryptKey: str) -> Response:
     interface = RI.RobonomicsInterface()
     mnemonic = decryptKey
-    kp = Keypair.create_from_mnemonic(mnemonic, ss58_format=32)
+    try:
+        kp = Keypair.create_from_mnemonic(mnemonic, ss58_format=32)
+    except ValueError:
+        return Response(code=403, message="Wrong seed!")
     seed = kp.seed_hex
     b = bytes(seed[0:32], "utf8")
     box = nacl.secret.SecretBox(b)
@@ -104,33 +87,3 @@ async def get_data_from_datalog(deviceID: str, decryptKey: str) -> Response:
     except Exception as e:
         print(f"Error during decription {e}")
         return Response(code=102, message="Could not load data")
-
-
-@app.get("/updateDevice/{deviceID}", response_model=Response)
-async def send_to_datalog(deviceID: str, decryptKey: str, value: str) -> Response:
-    interface = RI.RobonomicsInterface(seed=decryptKey)
-    mnemonic = decryptKey
-    kp = Keypair.create_from_mnemonic(mnemonic, ss58_format=32)
-    seed = kp.seed_hex
-    b = bytes(seed[0:32], "utf8")
-    box = nacl.secret.SecretBox(b)
-    if deviceID == KEYS["vacuum"]:
-        if value == "start" or value == "pause":
-            data = {"agent": f"robot_vacuum_{value}"}
-        elif value == "home":
-            data = {"agent": "robot_vacuum_return_to_base"}
-        else:
-            return "Wrong command!"
-    elif deviceID == KEYS["lightbulb"]:
-        if value == "off" or value == "on":
-            data = {"agent": f"lightbulb_turn_{value}"}
-        else:
-            try:
-                command = int(value)
-                data = {"agent": "lightbulb_brightness", "brightness": f"{command}"}
-            except ValueError:
-                return "Wrong command!"
-    encrypted = box.encrypt(bytes(json.dumps(data), encoding="utf8"))
-    encrypted = base64.b64encode(encrypted).decode("ascii")
-    interface.record_datalog(f"{encrypted}")
-    return Response(code=200, message="")

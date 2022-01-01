@@ -9,7 +9,7 @@ pip3 install jinja2
 
 ```
 cd app/
-uvicorn main:app
+uvicorn app:app
 ```
 ---
 
