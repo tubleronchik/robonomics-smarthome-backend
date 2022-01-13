@@ -21,21 +21,3 @@ async def add_device(request: Request) -> None:
         f.write(f"{body} \n")
     return Response(code=200, message="")
     
-    
-    
-    
-
-
-
-"""
-{
-  "deviceID": "yourDeviceId",
-  "deviceName": "simpleDeviceName",
-  "deviceParams": [
-    {
-      "key": "Humidity",
-      "units": "%"
-    }
-  ]
-}
-"""
