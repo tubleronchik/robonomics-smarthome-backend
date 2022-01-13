@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from config import KEYS
+from config.config import KEYS
 from fastapi import APIRouter
 from pydantic import BaseModel
 from substrateinterface import SubstrateInterface, Keypair
@@ -18,6 +18,7 @@ router = APIRouter()
 class Response(BaseModel):
     code: int
     message: str
+
 
 @router.get("/updateDevice/{deviceID}", response_model=Response)
 async def send_to_datalog(deviceID: str, decryptKey: str, value: str) -> Response:

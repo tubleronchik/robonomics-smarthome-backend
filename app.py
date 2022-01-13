@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# from app.routers.adding import add_device
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-from routers import fetch, update
+from routers import fetch, update, adding
 
 app = FastAPI()
 app.add_middleware(
@@ -17,3 +17,4 @@ app.add_middleware(
 
 app.include_router(fetch.router)
 app.include_router(update.router)
+app.include_router(adding.router)

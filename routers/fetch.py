@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from config import KEYS
+from config.config import KEYS
 from fastapi import APIRouter
 from pydantic import BaseModel
 from substrateinterface import SubstrateInterface, Keypair
@@ -31,6 +31,12 @@ async def get_data_from_datalog(deviceID: str, decryptKey: str) -> Response:
     seed = kp.seed_hex
     b = bytes(seed[0:32], "utf8")
     box = nacl.secret.SecretBox(b)
+    ids = []
+    with open("config/device.py") as f:
+        for device in f.readlines():
+            print(device)
+            device = ast.literal_eval(device)
+            ids.append(device["deviceID"])
     record = interface.fetch_datalog(deviceID)
     try:
         decrypted = box.decrypt(base64.b64decode(record["payload"])).decode()
@@ -82,6 +88,28 @@ async def get_data_from_datalog(deviceID: str, decryptKey: str) -> Response:
                 "imgSrc": "/devicePlaceholder.jpeg",
                 "isManageable": "true",
             }
+        elif any(deviceID for id in ids):
+            with open("config/device.py") as f:
+                for device in f.readlines():
+                    device = ast.literal_eval(device)
+                    values = []
+                    for param in device["deviceParams"]:
+                        values.append(
+                            {
+                                "name": param["key"],
+                                "value": data["key"],
+                                "units": param["units"],
+                            }
+                        )
+                    response = {
+                        "id": deviceID,
+                        "name": device["deviceName"],
+                        "values": values,
+                        "recentlyAdded": "false",
+                        "imgSrc": "/devicePlaceholder.jpeg",
+                        "isManageable": "false",
+                    }
+
         return Response(code=200, message=json.dumps(response))
 
     except Exception as e:

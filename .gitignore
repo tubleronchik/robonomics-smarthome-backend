@@ -1,3 +1,4 @@
-config.py
+config/config.py
+config/device.py
 __pycache__
 test.py
