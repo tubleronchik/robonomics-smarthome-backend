@@ -34,13 +34,15 @@ async def get_data_from_datalog(deviceID: str, decryptKey: str) -> Response:
     ids = []
     with open("config/device.py") as f:
         for device in f.readlines():
-            print(device)
             device = ast.literal_eval(device)
-            ids.append(device["deviceID"])
+            ids.append(device["deviceId"])
     record = interface.fetch_datalog(deviceID)
+    print(record)
     try:
-        decrypted = box.decrypt(base64.b64decode(record["payload"])).decode()
+        decrypted = box.decrypt(base64.b64decode(record[1])).decode()
+        # print(decrypted)
         data = ast.literal_eval(decrypted)
+        print(data)
         if deviceID == KEYS["temperature"]:
             response = {
                 "id": deviceID,
@@ -48,19 +50,14 @@ async def get_data_from_datalog(deviceID: str, decryptKey: str) -> Response:
                 "values": [
                     {
                         "name": "Temperature",
-                        "value": data["temperature_sensor_temperature"],
+                        "value": data["sensor.temperature_sensor_temperature"],
                         "units": "°C",
                     },
                     {
                         "name": "Humidity",
-                        "value": data["temperature_sensor_humidity"],
+                        "value": data["sensor.temperature_sensor_humidity"],
                         "units": "%",
-                    },
-                    {
-                        "name": "Battery",
-                        "value": data["temperature_sensor_battery"],
-                        "units": "%",
-                    },
+                    }
                 ],
                 "recentlyAdded": "false",
                 "imgSrc": "/devicePlaceholder.jpeg",
@@ -94,10 +91,11 @@ async def get_data_from_datalog(deviceID: str, decryptKey: str) -> Response:
                     device = ast.literal_eval(device)
                     values = []
                     for param in device["deviceParams"]:
+                        print(param)
                         values.append(
                             {
                                 "name": param["key"],
-                                "value": data["key"],
+                                "value": data[param["key"]],
                                 "units": param["units"],
                             }
                         )
