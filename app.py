@@ -4,7 +4,7 @@
 # from app.routers.adding import add_device
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import fetch, update, adding, device_list
+from routers import fetch, update, adding, device_list, launch
 
 app = FastAPI()
 app.add_middleware(
@@ -19,3 +19,4 @@ app.include_router(fetch.router)
 app.include_router(update.router)
 app.include_router(adding.router)
 app.include_router(device_list.router)
+app.include_router(launch.router)

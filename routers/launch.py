@@ -9,14 +9,20 @@ import typing as tp
 
 router = APIRouter()
 
+
 class Response(BaseModel):
     code: int
     message: str
 
-@router.post("/addNewDevice/", response_model=Response)
-async def add_device(request: Request) -> Response:
+
+@router.post("/launchDevice/", response_model=Response)
+async def launch_device(request: Request) -> Response:
     body = await request.json()
-    with open("config/device.py", "a") as f:
-        f.write(f"{body} \n")
+    try:
+        interface = RI.RobonomicsInterface(seed=body["seed"])
+    except ValueError:
+        return Response(code=403, message="Wrong seed!")
+    status = body["status"].lower() == "true"
+    interface.send_launch(target_address=body["id"], toggle=status)
     return Response(code=200, message="")
     
