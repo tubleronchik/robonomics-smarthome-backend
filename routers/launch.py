@@ -15,7 +15,7 @@ class Response(BaseModel):
     message: str
 
 
-@router.post("/launchDevice/", response_model=Response)
+@router.post("/launchDevice", response_model=Response)
 async def launch_device(request: Request) -> Response:
     body = await request.json()
     try:
