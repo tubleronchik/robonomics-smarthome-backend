@@ -1,5 +1,0 @@
-KEYS = {
-    "vacuum": "",
-    "lightbulb": "",
-    "temperature": ""
-}
