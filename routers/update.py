@@ -34,7 +34,6 @@ async def send_to_datalog(deviceID: str, decryptKey: str, value: str) -> Respons
     b = bytes(seed[0:32], "utf8")
     box = nacl.secret.SecretBox(b)
     device = _get_device_from_list(deviceID)
-    print(f"device: {device}")
     if device:
         if device["type"] == "vacuum":
             if value == "start" or value == "pause":
@@ -44,13 +43,6 @@ async def send_to_datalog(deviceID: str, decryptKey: str, value: str) -> Respons
             else:
                 return "Wrong command!"
         elif device["type"] == "lightbulb":
-            if value == "start" or value == "pause":
-                data = {"agent": f"robot_vacuum_{value}"}
-            elif value == "home":
-                data = {"agent": "robot_vacuum_return_to_base"}
-            else:
-                return "Wrong command!"
-        elif deviceID == KEYS["lightbulb"]:
             if value == "off" or value == "on":
                 data = {"agent": f"lightbulb_turn_{value}"}
             else:
@@ -66,15 +58,13 @@ async def send_to_datalog(deviceID: str, decryptKey: str, value: str) -> Respons
         return Response(code=102, message="No device with such id")
     encrypted = box.encrypt(bytes(json.dumps(data), encoding="utf8"))
     encrypted = base64.b64encode(encrypted).decode("ascii")
-    res = interface.record_datalog(f"{encrypted}")
-    print(res)
+    interface.record_datalog(f"{encrypted}")
     return Response(code=200, message="")
-    
-    
+
+
 def _get_device_from_list(id) -> tp.Optional[dict]:
     with open("config/device.py") as f:
         for device in f.readlines():
             device = ast.literal_eval(device)
             if device["deviceId"] == id:
                 return device
-

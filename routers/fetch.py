@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+from email import message
 from config.config import KEYS
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -40,75 +41,38 @@ async def get_data_from_datalog(deviceID: str, decryptKey: str) -> Response:
     try:
         decrypted = box.decrypt(base64.b64decode(record[1])).decode()
         data = ast.literal_eval(decrypted)
-        if deviceID == KEYS["temperature"]:
-            response = {
-                "id": deviceID,
-                "name": "Aquara temperature & humidity sensor",
-                "values": [
+        device = _get_device_from_list(deviceID)
+        values = []
+        if device:
+            for param in device["deviceParams"]:
+                print(param)
+                values.append(
                     {
-                        "name": "Temperature",
-                        "value": data["sensor.temperature_sensor_temperature"],
-                        "units": "°C",
-                    },
-                    {
-                        "name": "Humidity",
-                        "value": data["sensor.temperature_sensor_humidity"],
-                        "units": "%",
+                        "name": param["key"],
+                        "value": data[param["key"]],
+                        "units": param["units"],
                     }
-                ],
-                "recentlyAdded": "false",
-                "imgSrc": "/devicePlaceholder.jpeg",
-                "isManageable": "false",
-            }
-        elif deviceID == KEYS["vacuum"]:
+                )
             response = {
                 "id": deviceID,
-                "name": "Robot Vacuum",
-                "values": [
-                    {"name": "State", "value": data["vacuum.robot_vacuum"], "units": ""}
-                ],
+                "name": device["deviceName"],
+                "values": values,
                 "recentlyAdded": "false",
                 "imgSrc": "/devicePlaceholder.jpeg",
-                "isManageable": "true",
+                "isManageable": device["isManageable"],
             }
-        elif deviceID == KEYS["lightbulb"]:
-            response = {
-                "id": deviceID,
-                "name": "Lightbulb",
-                "values": [
-                    {"name": "State", "value": data["light.lightbulb"], "units": ""}
-                ],
-                "recentlyAdded": "false",
-                "imgSrc": "/devicePlaceholder.jpeg",
-                "isManageable": "true",
-            }
-        elif any(deviceID for id in ids):
-            with open("config/device.py") as f:
-                for device in f.readlines():
-                    device = ast.literal_eval(device)
-                    if device["deviceId"] == deviceID:
-                        break
-                values = []
-                for param in device["deviceParams"]:
-                    print(param)
-                    values.append(
-                        {
-                            "name": param["key"],
-                            "value": data[param["key"]],
-                            "units": param["units"],
-                        }
-                    )
-                response = {
-                    "id": deviceID,
-                    "name": device["deviceName"],
-                    "values": values,
-                    "recentlyAdded": "false",
-                    "imgSrc": "/devicePlaceholder.jpeg",
-                    "isManageable": "false",
-                }
-
-        return Response(code=200, message=json.dumps(response))
+            return Response(code=200, message=json.dumps(response))
+        else:
+            return Response(code=102, message="No device with such id")
 
     except Exception as e:
         print(f"Error during decription {e}")
         return Response(code=102, message="Could not load data")
+
+
+def _get_device_from_list(id) -> tp.Optional[dict]:
+    with open("config/device.py") as f:
+        for device in f.readlines():
+            device = ast.literal_eval(device)
+            if device["deviceId"] == id:
+                return device
