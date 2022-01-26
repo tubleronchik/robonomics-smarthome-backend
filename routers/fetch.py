@@ -37,12 +37,9 @@ async def get_data_from_datalog(deviceID: str, decryptKey: str) -> Response:
             device = ast.literal_eval(device)
             ids.append(device["deviceId"])
     record = interface.fetch_datalog(deviceID)
-    print(record)
     try:
         decrypted = box.decrypt(base64.b64decode(record[1])).decode()
-        # print(decrypted)
         data = ast.literal_eval(decrypted)
-        print(data)
         if deviceID == KEYS["temperature"]:
             response = {
                 "id": deviceID,
@@ -89,24 +86,26 @@ async def get_data_from_datalog(deviceID: str, decryptKey: str) -> Response:
             with open("config/device.py") as f:
                 for device in f.readlines():
                     device = ast.literal_eval(device)
-                    values = []
-                    for param in device["deviceParams"]:
-                        print(param)
-                        values.append(
-                            {
-                                "name": param["key"],
-                                "value": data[param["key"]],
-                                "units": param["units"],
-                            }
-                        )
-                    response = {
-                        "id": deviceID,
-                        "name": device["deviceName"],
-                        "values": values,
-                        "recentlyAdded": "false",
-                        "imgSrc": "/devicePlaceholder.jpeg",
-                        "isManageable": "false",
-                    }
+                    if device["deviceId"] == deviceID:
+                        break
+                values = []
+                for param in device["deviceParams"]:
+                    print(param)
+                    values.append(
+                        {
+                            "name": param["key"],
+                            "value": data[param["key"]],
+                            "units": param["units"],
+                        }
+                    )
+                response = {
+                    "id": deviceID,
+                    "name": device["deviceName"],
+                    "values": values,
+                    "recentlyAdded": "false",
+                    "imgSrc": "/devicePlaceholder.jpeg",
+                    "isManageable": "false",
+                }
 
         return Response(code=200, message=json.dumps(response))
 
