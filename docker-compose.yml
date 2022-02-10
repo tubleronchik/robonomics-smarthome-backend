@@ -4,6 +4,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    volumes: 
+      - "./config:/app/config"
     ports:
       - "8000:8000"
   smarthome_frontend:
