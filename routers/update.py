@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from email import message
-from config.config import KEYS
 from fastapi import APIRouter
 from pydantic import BaseModel
 from substrateinterface import SubstrateInterface, Keypair
