@@ -11,6 +11,7 @@ import ast
 import json
 import nacl.bindings
 import nacl.public
+import base64
 
 router = APIRouter()
 
@@ -26,12 +27,17 @@ def decrypt_message(
     private_key = nacl.bindings.crypto_sign_ed25519_sk_to_curve25519(
         user_keypair.private_key + user_keypair.public_key
     )
+    sender_kp = Keypair(
+        ss58_address=sensor_public_address,
+        crypto_type=KeypairType.ED25519,
+    )
     recipient = nacl.public.PrivateKey(private_key)
     curve25519_public_key = nacl.bindings.crypto_sign_ed25519_pk_to_curve25519(
-        sensor_public_address
+        sender_kp.public_key
     )
     sender = nacl.public.PublicKey(curve25519_public_key)
-    return nacl.public.Box(recipient, sender).decrypt(message)
+    encrypted = base64.b64decode(message)
+    return nacl.public.Box(recipient, sender).decrypt(encrypted)
 
 
 @router.get("/fetchDevice/{deviceID}", response_model=Response)
@@ -51,12 +57,17 @@ async def get_data_from_datalog(deviceID: str, decryptKey: str) -> Response:
             ids.append(device["deviceId"])
     record = interface.fetch_datalog(deviceID)
     try:
-        decrypted_message = decrypt_message(message=record[1], keypair=kp)
+        decrypted_message = str(
+            decrypt_message(
+                message=record[1], user_keypair=kp, sensor_public_address=deviceID
+            )
+        )[2:-1]
         data = ast.literal_eval(decrypted_message)
         device = _get_device_from_list(deviceID)
         values = []
         if device:
             for param in device["deviceParams"]:
+                print(param)
                 values.append(
                     {
                         "name": param["key"],

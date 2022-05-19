@@ -20,14 +20,17 @@ class Response(BaseModel):
 @router.get("/devices", response_model=Response)
 async def read_devices() -> Response:
     devices = []
-    with open("config/device.py") as f:
-        for device in f.readlines():
-            device = ast.literal_eval(device)
-            devices.append(
-                {
-                    "id": device["deviceId"],
-                    "name": device["deviceName"],
-                    "imgSrc": "/devicePlaceholder.jpeg",
-                }
-            )
-    return Response(code=200, message=json.dumps(devices))
+    try:
+        with open("config/device.py") as f:
+            for device in f.readlines():
+                device = ast.literal_eval(device)
+                devices.append(
+                    {
+                        "id": device["deviceId"],
+                        "name": device["deviceName"],
+                        "imgSrc": "/devicePlaceholder.jpeg",
+                    }
+                )
+        return Response(code=200, message=json.dumps(devices))
+    except FileNotFoundError:
+        pass
