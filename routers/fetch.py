@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+from substrateinterface import Keypair, KeypairType
 from fastapi import APIRouter
 from pydantic import BaseModel
-from substrateinterface import SubstrateInterface, Keypair
 import nacl.secret
-import base64
 import robonomicsinterface as RI
 import typing as tp
 import ast
 import json
+import nacl.bindings
+import nacl.public
 
 router = APIRouter()
 
@@ -19,17 +20,30 @@ class Response(BaseModel):
     message: str
 
 
+def decrypt_message(
+    message: str, user_keypair: Keypair, sensor_public_address: str
+) -> bytes:
+    private_key = nacl.bindings.crypto_sign_ed25519_sk_to_curve25519(
+        user_keypair.private_key + user_keypair.public_key
+    )
+    recipient = nacl.public.PrivateKey(private_key)
+    curve25519_public_key = nacl.bindings.crypto_sign_ed25519_pk_to_curve25519(
+        sensor_public_address
+    )
+    sender = nacl.public.PublicKey(curve25519_public_key)
+    return nacl.public.Box(recipient, sender).decrypt(message)
+
+
 @router.get("/fetchDevice/{deviceID}", response_model=Response)
 async def get_data_from_datalog(deviceID: str, decryptKey: str) -> Response:
     interface = RI.RobonomicsInterface()
-    mnemonic = decryptKey
     try:
-        kp = Keypair.create_from_mnemonic(mnemonic, ss58_format=32)
+        kp = Keypair.create_from_mnemonic(
+            decryptKey,
+            crypto_type=KeypairType.ED25519,
+        )
     except ValueError:
         return Response(code=403, message="Wrong seed!")
-    seed = kp.seed_hex
-    b = bytes(seed[0:32], "utf8")
-    box = nacl.secret.SecretBox(b)
     ids = []
     with open("config/device.py") as f:
         for device in f.readlines():
@@ -37,13 +51,12 @@ async def get_data_from_datalog(deviceID: str, decryptKey: str) -> Response:
             ids.append(device["deviceId"])
     record = interface.fetch_datalog(deviceID)
     try:
-        decrypted = box.decrypt(base64.b64decode(record[1])).decode()
-        data = ast.literal_eval(decrypted)
+        decrypted_message = decrypt_message(message=record[1], keypair=kp)
+        data = ast.literal_eval(decrypted_message)
         device = _get_device_from_list(deviceID)
         values = []
         if device:
             for param in device["deviceParams"]:
-                print(param)
                 values.append(
                     {
                         "name": param["key"],
