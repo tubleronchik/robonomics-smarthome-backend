@@ -14,6 +14,7 @@ uvicorn app:app
 
 # Docker
 ```
-docker-compose up 
+docker compose build
+docker compose up 
 ```
 App can be found at  `http://127.0.0.1:8080`
